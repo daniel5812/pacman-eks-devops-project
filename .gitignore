@@ -1,1 +1,15 @@
 node_modules
+node_modules/
+npm-debug.log
+
+.env
+*.pem
+*.key
+
+eksctl_*.tar.gz
+*.tar.gz
+
+.DS_Store
+.vscode/
+
+results.txt

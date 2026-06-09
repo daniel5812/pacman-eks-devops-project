@@ -1,0 +1,40 @@
+EKS Deployment Evidence
+=======================
+
+Command:
+kubectl get pods -o wide
+
+Output:
+mongo-0                   1/1 Running
+pacman-...                1/1 Running
+
+Command:
+kubectl get svc
+
+Output:
+pacman LoadBalancer ... k8s-default-pacman-...elb.eu-central-1.amazonaws.com
+
+Command:
+kubectl get pvc
+
+Output:
+mongo-data-mongo-0 Bound 1Gi RWO auto-ebs-sc
+
+Command:
+kubectl logs deployment/pacman
+
+Output:
+Listening on port 8080
+Connected to database server successfully
+
+Command:
+aws eks describe-cluster ...
+
+Output:
+ACTIVE
+
+Command:
+aws ecr describe-images ...
+
+Output:
+pacman-app:latest ACTIVE

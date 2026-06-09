@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pacman
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pacman
+  template:
+    metadata:
+      labels:
+        app: pacman
+    spec:
+      containers:
+        - name: pacman
+          image: 696223520711.dkr.ecr.eu-central-1.amazonaws.com/pacman-app:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: MONGO_SERVICE_HOST
+              value: "mongo"
+            - name: MONGO_DATABASE
+              value: "pacman"
+            - name: MY_MONGO_PORT
+              value: "27017"
