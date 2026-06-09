@@ -2,13 +2,33 @@
 
 ## Project Overview
 
-This project demonstrates a complete DevOps deployment workflow for the Pac-Man application using Docker, Kubernetes, Amazon ECR, Amazon EKS, an AWS Network Load Balancer, and MongoDB with persistent storage.
+This project demonstrates a complete DevOps deployment workflow for the Pac-Man application on AWS EKS.
 
-The main goal of the project is to containerize the application, deploy it to Kubernetes, expose it publicly through a Load Balancer, and manage the database using a StatefulSet with Persistent Volumes.
+The application was containerized with Docker, pushed to Amazon ECR, deployed to an EKS Auto Mode cluster, exposed externally using an AWS Network Load Balancer, and connected to a MongoDB database deployed as a Kubernetes StatefulSet with persistent storage.
+
+The project also includes a GitHub Actions CI/CD pipeline that automatically builds the Docker image, pushes it to Amazon ECR, and deploys the Kubernetes manifests to EKS.
+
+---
+
+## Requirements Covered
+
+* Infrastructure provisioned using `eksctl`
+* EKS Auto Mode cluster
+* Dockerized Pac-Man application
+* CI/CD pipeline using GitHub Actions
+* Docker image stored in Amazon ECR
+* Application deployed to AWS EKS
+* Application exposed using AWS Load Balancer / NLB
+* MongoDB deployed as StatefulSet
+* Persistent storage using PVC and AWS EBS
+* Kubernetes manifest files included
+* Deployment evidence and screenshots included
+
+---
 
 ## Architecture
 
-The deployed architecture is:
+### Runtime Architecture
 
 ```text
 User Browser
@@ -23,12 +43,12 @@ Kubernetes Service: mongo
    ↓
 MongoDB StatefulSet: mongo-0
    ↓
-PVC
+PersistentVolumeClaim
    ↓
 AWS EBS Volume
 ```
 
-The CI/CD flow is:
+### CI/CD Pipeline
 
 ```text
 Developer Push to GitHub
@@ -39,8 +59,16 @@ Docker Build
    ↓
 Push Image to Amazon ECR
    ↓
-Deploy to Amazon EKS
+Update kubeconfig for EKS
+   ↓
+kubectl apply Kubernetes manifests
+   ↓
+Restart Pac-Man Deployment
+   ↓
+Application updated on EKS
 ```
+
+---
 
 ## Technologies Used
 
@@ -53,11 +81,14 @@ Deploy to Amazon EKS
 * Amazon ECR
 * AWS Network Load Balancer
 * MongoDB
-* Kubernetes StatefulSet
+* StatefulSet
 * PersistentVolumeClaim
+* AWS EBS
 * GitHub Actions
 * eksctl
 * AWS CLI
+
+---
 
 ## Repository Structure
 
@@ -66,10 +97,10 @@ Deploy to Amazon EKS
 ├── .github/
 │   └── workflows/
 │       └── build-and-push.yml
-├── docker/
 ├── docs/
 │   └── evidence/
-│       └── eks-deployment-results.txt
+│       ├── eks-deployment-results.txt
+│       └── github-actions-deployment-results.txt
 ├── infra/
 │   └── eks-auto-cluster.yaml
 ├── k8s/
@@ -80,66 +111,47 @@ Deploy to Amazon EKS
 │   ├── pacman-service.yaml
 │   ├── pacman-service-eks.yaml
 │   └── storage-class-eks.yaml
-├── public/
-├── routes/
-├── views/
+├── screenshots/
 ├── Dockerfile
 ├── docker-compose.yml
 ├── package.json
 ├── package-lock.json
-└── README.md
+├── README.md
+└── README-original.md
 ```
 
-## Local Docker Deployment
+---
 
-Build the Docker image:
+## Docker
+
+The application was containerized using a custom Dockerfile.
+
+Build the Docker image locally:
 
 ```bash
 docker build -t pacman-app:local .
 ```
 
-Run MongoDB:
-
-```bash
-docker run -d \
-  --name pacman-mongo \
-  -p 27017:27017 \
-  mongo:3.6
-```
-
-Run the Pac-Man application:
-
-```bash
-docker run -d \
-  --name pacman-app \
-  --network pacman-net \
-  -p 8080:8080 \
-  -e MONGO_SERVICE_HOST=pacman-mongo \
-  -e MONGO_DATABASE=pacman \
-  -e MY_MONGO_PORT=27017 \
-  pacman-app:local
-```
-
-## Docker Compose
-
-The project also includes a `docker-compose.yml` file for running the application and MongoDB together locally.
-
-Run:
+Run locally with Docker Compose:
 
 ```bash
 docker compose up -d --build
 ```
 
-Check containers:
+Check the running containers:
 
 ```bash
 docker ps
 docker compose logs pacman-app
 ```
 
-## Kubernetes Deployment on Minikube
+---
 
-Load the local Docker image into Minikube:
+## Kubernetes on Minikube
+
+Before deploying to AWS, the application was tested locally on Minikube.
+
+Load the local image into Minikube:
 
 ```bash
 minikube image load pacman-app:local
@@ -154,7 +166,7 @@ kubectl apply -f k8s/pacman-deployment.yaml
 kubectl apply -f k8s/pacman-service.yaml
 ```
 
-Check the deployment:
+Validate the deployment:
 
 ```bash
 kubectl get pods
@@ -164,40 +176,35 @@ kubectl get pvc
 kubectl logs deployment/pacman
 ```
 
-Access the application locally:
-
-```bash
-kubectl port-forward --address 0.0.0.0 service/pacman 8080:8080
-```
+---
 
 ## Amazon ECR
 
-Create an ECR repository:
+The Docker image was pushed to Amazon ECR.
 
-```bash
-aws ecr create-repository \
-  --repository-name pacman-app \
-  --region eu-central-1
+ECR repository:
+
+```text
+pacman-app
 ```
 
-Authenticate Docker to ECR:
+Image tag:
 
-```bash
-aws ecr get-login-password --region eu-central-1 | \
-docker login --username AWS --password-stdin <AWS_ACCOUNT_ID>.dkr.ecr.eu-central-1.amazonaws.com
+```text
+latest
 ```
 
-Tag and push the image:
+Example image URI:
 
-```bash
-docker tag pacman-app:local <AWS_ACCOUNT_ID>.dkr.ecr.eu-central-1.amazonaws.com/pacman-app:latest
-
-docker push <AWS_ACCOUNT_ID>.dkr.ecr.eu-central-1.amazonaws.com/pacman-app:latest
+```text
+696223520711.dkr.ecr.eu-central-1.amazonaws.com/pacman-app:latest
 ```
 
-## EKS Cluster Creation
+---
 
-The EKS cluster was created using `eksctl` with EKS Auto Mode.
+## EKS Infrastructure
+
+The EKS cluster was provisioned using `eksctl` with EKS Auto Mode.
 
 Cluster configuration file:
 
@@ -215,12 +222,25 @@ Verify the cluster:
 
 ```bash
 kubectl get nodes
-aws eks describe-cluster --name pacman-eks --region eu-central-1 --query "cluster.status"
+aws eks describe-cluster \
+  --name pacman-eks \
+  --region eu-central-1 \
+  --query "cluster.status"
 ```
+
+Expected result:
+
+```text
+ACTIVE
+```
+
+---
 
 ## EKS Application Deployment
 
-Apply the EKS Kubernetes manifests:
+The application and database were deployed using Kubernetes manifests.
+
+Apply the manifests:
 
 ```bash
 kubectl apply -f k8s/storage-class-eks.yaml
@@ -230,7 +250,7 @@ kubectl apply -f k8s/pacman-deployment-eks.yaml
 kubectl apply -f k8s/pacman-service-eks.yaml
 ```
 
-Verify the deployment:
+Validate the deployment:
 
 ```bash
 kubectl get pods -o wide
@@ -240,7 +260,7 @@ kubectl get pvc
 kubectl logs deployment/pacman
 ```
 
-Expected result:
+Expected results:
 
 ```text
 mongo-0                   1/1 Running
@@ -250,11 +270,13 @@ mongo-data-mongo-0        Bound
 Connected to database server successfully
 ```
 
+---
+
 ## Load Balancer Access
 
 The Pac-Man application is exposed using a Kubernetes Service of type `LoadBalancer`.
 
-Get the external Load Balancer address:
+Get the Load Balancer DNS:
 
 ```bash
 kubectl get svc pacman
@@ -266,9 +288,21 @@ Open the application in a browser:
 http://<LOAD_BALANCER_DNS_NAME>
 ```
 
-## MongoDB Validation
+---
 
-Connect to the MongoDB pod:
+## MongoDB StatefulSet and Persistent Storage
+
+MongoDB is deployed using a Kubernetes StatefulSet.
+
+The StatefulSet uses:
+
+* MongoDB container image
+* Kubernetes ClusterIP Service
+* PersistentVolumeClaim
+* EKS Auto Mode StorageClass
+* AWS EBS persistent volume
+
+Validate MongoDB:
 
 ```bash
 kubectl exec -it mongo-0 -- mongo
@@ -284,32 +318,40 @@ db.userstats.find().pretty()
 exit
 ```
 
-This validates that the Pac-Man application is connected to MongoDB and that data is stored in the database.
+---
 
-## CI/CD Pipeline
+## GitHub Actions CI/CD
 
-The project includes a GitHub Actions workflow:
+The CI/CD workflow is located at:
 
 ```text
 .github/workflows/build-and-push.yml
 ```
 
-The workflow performs the following steps:
+The pipeline performs the following steps:
 
-1. Checkout the source code
+1. Checkout source code
 2. Configure AWS credentials
 3. Login to Amazon ECR
-4. Build the Docker image
-5. Tag the Docker image
-6. Push the image to Amazon ECR
+4. Build Docker image
+5. Tag Docker image
+6. Push Docker image to ECR
+7. Update kubeconfig for EKS
+8. Apply Kubernetes manifests
+9. Restart the Pac-Man deployment
+10. Verify rollout status
 
-Required GitHub Secrets:
+Required GitHub repository secrets:
 
 ```text
 AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY
 AWS_ACCOUNT_ID
 ```
+
+The IAM user used by GitHub Actions was granted access to the EKS cluster using EKS Access Entries and an EKS access policy.
+
+---
 
 ## Evidence
 
@@ -319,35 +361,40 @@ Deployment evidence is stored under:
 docs/evidence/
 ```
 
-Recommended screenshots are stored under:
+Screenshots are stored under:
 
 ```text
 screenshots/
 ```
 
-Important evidence includes:
+Recommended screenshots:
 
-* EKS cluster status: ACTIVE
-* ECR image with `latest` tag
-* Running Kubernetes pods
-* LoadBalancer service with external DNS
-* MongoDB StatefulSet ready
-* PVC status: Bound
-* Pac-Man logs showing successful MongoDB connection
-* Pac-Man application running in the browser
+* GitHub Actions successful workflow
+* ECR repository with `pacman-app:latest`
+* EKS cluster status `ACTIVE`
+* `kubectl get pods -o wide`
+* `kubectl get svc` showing Load Balancer DNS
+* `kubectl get pvc` showing PVC status `Bound`
+* Pac-Man logs showing MongoDB connection
+* Pac-Man application running in the browser through the Load Balancer
+* MongoDB records after playing the game
+
+---
 
 ## Cleanup
 
-To avoid unnecessary AWS charges, delete the EKS cluster when finished:
+To avoid unnecessary AWS charges, delete the EKS cluster after finishing the project:
 
 ```bash
 eksctl delete cluster -f infra/eks-auto-cluster.yaml
 ```
 
-Verify that resources were deleted:
+Verify deletion:
 
 ```bash
-aws eks describe-cluster --name pacman-eks --region eu-central-1
+aws eks describe-cluster \
+  --name pacman-eks \
+  --region eu-central-1
 ```
 
 Optional ECR cleanup:
@@ -359,10 +406,13 @@ aws ecr delete-repository \
   --force
 ```
 
+---
+
 ## Notes
 
-* The Pac-Man application uses MongoDB as its database.
-* MongoDB is deployed as a Kubernetes StatefulSet.
-* Persistent storage is provided through a PVC and AWS EBS.
-* The application is exposed externally through an AWS Load Balancer.
-* In production, GitHub Actions should use AWS OIDC instead of long-term AWS access keys.
+* The application source code is located in the root of the repository.
+* MongoDB is deployed separately from the application.
+* The application connects to MongoDB through an internal Kubernetes Service named `mongo`.
+* Persistent storage is handled by Kubernetes PVC and AWS EBS.
+* The application is exposed publicly through an AWS Load Balancer.
+* For a production environment, GitHub Actions should use AWS OIDC instead of long-term access keys.
