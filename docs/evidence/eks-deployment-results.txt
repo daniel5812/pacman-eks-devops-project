@@ -38,3 +38,34 @@ aws ecr describe-images ...
 
 Output:
 pacman-app:latest ACTIVE
+
+GitHub Actions CI/CD Evidence
+=============================
+
+Workflow:
+Build, Push and Deploy Pacman
+
+Result:
+Success
+
+Pipeline stages:
+- Checkout source code: success
+- Configure AWS credentials: success
+- Login to Amazon ECR: success
+- Build Docker image: success
+- Tag Docker image: success
+- Push Docker image to ECR: success
+- Update kubeconfig: success
+- Deploy Kubernetes manifests: success
+- Restart Pacman deployment: success
+
+EKS validation commands:
+kubectl get pods -o wide
+kubectl get svc
+kubectl get statefulset
+kubectl get pvc
+kubectl logs deployment/pacman
+kubectl rollout status deployment/pacman
+
+
+http://k8s-default-pacman-bad35a663b-e4449d119d68dece.elb.eu-central-1.amazonaws.com/
