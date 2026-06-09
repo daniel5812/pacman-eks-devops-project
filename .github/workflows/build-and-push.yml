@@ -1,4 +1,4 @@
-name: Build and Push Pacman Image
+name: Build, Push and Deploy Pacman
 
 on:
   push:
@@ -10,9 +10,10 @@ env:
   AWS_REGION: eu-central-1
   ECR_REPOSITORY: pacman-app
   IMAGE_TAG: latest
+  EKS_CLUSTER_NAME: pacman-eks
 
 jobs:
-  build-and-push:
+  build-push-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -41,3 +42,22 @@ jobs:
       - name: Push Docker image to ECR
         run: |
           docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --name $EKS_CLUSTER_NAME \
+            --region $AWS_REGION
+
+      - name: Deploy Kubernetes manifests
+        run: |
+          kubectl apply -f k8s/storage-class-eks.yaml
+          kubectl apply -f k8s/mongo-service.yaml
+          kubectl apply -f k8s/mongo-statefulset.yaml
+          kubectl apply -f k8s/pacman-deployment-eks.yaml
+          kubectl apply -f k8s/pacman-service-eks.yaml
+
+      - name: Restart Pacman deployment
+        run: |
+          kubectl rollout restart deployment/pacman
+          kubectl rollout status deployment/pacman
